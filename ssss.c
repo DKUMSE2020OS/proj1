@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
-
+#define t_quantum 3
 typedef struct p_PCB{
     int pid;
     int state;
@@ -98,7 +98,8 @@ int main()
 	struct sigaction new_sa;
 	memset(&new_sa, 0, sizeof(new_sa));
 	new_sa.sa_handler = &signal_handler;
-	sigaction(SIGALRM, &new_sa, &old_sa);
+	for(int i=0;i<t_quantum;i++){
+	sigaction(SIGALRM, &new_sa, &old_sa);}
 
 	// fire the alrm timer
 	struct itimerval new_itimer, old_itimer;
@@ -126,17 +127,24 @@ void signal_handler(int signo)
 	
 	struct p_PCB* r_PCB = pop_queue(&run_q);
 	int target_pid = r_PCB->pid;
+	for(int i=0; i<t_quantum;i++){
 	printf("(%d)->(%d) signal! count: %d \n", getpid(), target_pid, count);
 	// send child a signal SIGUSR1
 	kill(target_pid, SIGALRM);
+	sleep(1);
 	count++;
 	r_PCB->burst_time -= 1;
-	if(r_PCB->burst_time ==0)
+	if(r_PCB->burst_time ==0) break;
+	}
+	if(r_PCB->burst_time ==0){
 		free(r_PCB);
-	else
-		add_queue(&run_q,r_PCB->pid,r_PCB->burst_time);
-
-	if (count == total_CPU_burst_time) exit(0);
+	}
+	else{
+		add_queue(&run_q,r_PCB->pid,r_PCB->burst_time);}
+	
+	if (count == total_CPU_burst_time){
+	 	printf("finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");	
+		exit(0);}
 }
 
 void add_queue(struct Run_q* run_q,int pid, int burst) {
