@@ -92,6 +92,11 @@ int main()
          printf("%d\n",run_q.front->next->next->pid);
          printf("%d\n",run_q.front->next->next->next->pid);
 
+	for(int i=0; i<10; i++){
+		PCB[i]= pop_queue(&run_q);
+		printf("%dst : (%d)\n",i,PCB[i]->pid);
+	}
+
 	printf("total cpu burst time is %d\n",total_CPU_burst_time);
 
 	// signal handler setup
