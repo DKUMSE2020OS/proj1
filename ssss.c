@@ -35,8 +35,8 @@ int time_quantum[5];
 int total_CPU_burst_time=0;
 
 struct Run_q run_q;
-struct p_PCB* PCB[10];
-
+//struct p_PCB* PCB[10];
+//struct p_PCB r_PCB;
 
 int main()
 {
@@ -52,7 +52,6 @@ int main()
 	for (int i = 0 ; i < 10; i++) {	
 		pipe(fd);
 		int burst =0;
-		p_PCB process;
 		int ret = fork();
 		if (ret < 0) {
 			// fork fail
@@ -77,7 +76,6 @@ int main()
 			// parent
 			close(fd[1]);
 			read(fd[0], &burst,sizeof(burst));
-                        process.burst_time = burst;
                         total_CPU_burst_time = total_CPU_burst_time + burst;
 			pids[i] =ret;
 			
@@ -87,15 +85,11 @@ int main()
 		}
 	}
 
-         printf("%d\n",run_q.front->pid);
-         printf("%d\n",run_q.front->next->pid);
-         printf("%d\n",run_q.front->next->next->pid);
-         printf("%d\n",run_q.front->next->next->next->pid);
 
-	for(int i=0; i<10; i++){
+	/*for(int i=0; i<10; i++){
 		PCB[i]= pop_queue(&run_q);
-		printf("%dst : (%d)\n",i,PCB[i]->pid);
-	}
+		printf("%dst | id:(%d) | burst+time:(%d)\n",i,PCB[i]->pid,PCB[i]->burst_time);
+	}*/
 
 	printf("total cpu burst time is %d\n",total_CPU_burst_time);
 
@@ -123,26 +117,30 @@ void signal_handler2(int signo)
 	printf("(%d) SIGALRM signaled!\n", getpid());
 	count++;
 	if(count ==total_exec_time){
-		printf("(%d) execution completed\n",getpid());
+		printf("(%d) execution completed@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n",getpid());
 		exit(0);}
 }
 
 void signal_handler(int signo)
 {
-	int target_pid = pids[count % 10];
-	// for(int i=0; i<3; i++){
+	
+	struct p_PCB* r_PCB = pop_queue(&run_q);
+	int target_pid = r_PCB->pid;
 	printf("(%d)->(%d) signal! count: %d \n", getpid(), target_pid, count);
 	// send child a signal SIGUSR1
-	//for(int i=0; i<3; i++){
 	kill(target_pid, SIGALRM);
 	count++;
-	//}
+	r_PCB->burst_time -= 1;
+	if(r_PCB->burst_time ==0)
+		free(r_PCB);
+	else
+		add_queue(&run_q,r_PCB->pid,r_PCB->burst_time);
 
 	if (count == total_CPU_burst_time) exit(0);
 }
+
 void add_queue(struct Run_q* run_q,int pid, int burst) {
-   
-       
+    
     struct p_PCB* newNode = malloc(sizeof(p_PCB));
    
     newNode->pid = pid;
@@ -182,5 +180,4 @@ int IsEmpty(struct Run_q* run_q){
 		return 1;
 	else
 		return 0;
-
 }
