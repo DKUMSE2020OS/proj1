@@ -17,14 +17,16 @@ typedef struct p_PCB{
 }p_PCB;
 
 typedef struct Run_q{
-    struct p_PCB* front;
-    struct p_PCB* rear;
+     p_PCB* front;
+     p_PCB* rear;
+     int count;
 }Run_q;
 
 void signal_handler(int signo);
 void signal_handler2(int signo);
 void add_queue(struct Run_q* run_q,int pid,int burst);
 void InitQueue(struct Run_q *run_q);
+int IsEmpty(struct Run_q* run_q);
 struct p_PCB* pop_queue(struct Run_q* run_q);
 int count = 0;
 int total_exec_time =0;//used by child
@@ -33,12 +35,15 @@ int time_quantum[5];
 int total_CPU_burst_time=0;
 
 struct Run_q run_q;
+struct p_PCB* PCB[10];
 
 
 int main()
 {
 	int fd[2];
 	srand(time(NULL));
+	InitQueue(&run_q);
+
 	for (int i = 0 ; i < 10; i++) {
 		pids[i] = 0;
 		time_quantum[i] = rand()%10+1;
@@ -48,7 +53,6 @@ int main()
 		pipe(fd);
 		int burst =0;
 		p_PCB process;
-		printf("%d",1);
 		int ret = fork();
 		if (ret < 0) {
 			// fork fail
@@ -76,18 +80,17 @@ int main()
                         process.burst_time = burst;
                         total_CPU_burst_time = total_CPU_burst_time + burst;
 			pids[i] =ret;
-
-
-			InitQueue(&run_q);
+			
+			//InitQueue(run_q);
 			add_queue(&run_q,pids[i],burst);
-
                         printf("child %d created, %d\n", pids[i],burst);
 		}
 	}
 
-/*	for(int i=0; i<10;i++){
-		printf("%d \n ", pop_queue(&run_q)->pid);
-	}*/
+         printf("%d\n",run_q.front->pid);
+         printf("%d\n",run_q.front->next->pid);
+         printf("%d\n",run_q.front->next->next->pid);
+         printf("%d\n",run_q.front->next->next->next->pid);
 
 	printf("total cpu burst time is %d\n",total_CPU_burst_time);
 
@@ -143,13 +146,15 @@ void add_queue(struct Run_q* run_q,int pid, int burst) {
     newNode->remaining_wait= 0;
     newNode->next = NULL;
 
-    if (run_q == NULL) {
-        run_q->front = newNode;
+    if (IsEmpty(run_q)) {
+        run_q->front = run_q->rear = newNode;
     }
     else {
         run_q->rear->next  = newNode;
+	run_q->rear =newNode;
     }
-    run_q->rear = newNode;
+
+    run_q->count++;
 }
 
 struct p_PCB* pop_queue(struct Run_q* run_q){
@@ -157,12 +162,20 @@ struct p_PCB* pop_queue(struct Run_q* run_q){
 	struct p_PCB* newNode = malloc(sizeof(p_PCB));
 
 	newNode = run_q->front;
-	run_q->front = newNode->next;
-	
+	run_q->front  = newNode->next;
+	run_q->count--;	
 	return newNode;	
 }
 void InitQueue(struct Run_q *run_q){
 
 	run_q->front = run_q->rear = NULL;
+	run_q->count =0;
 }
+int IsEmpty(struct Run_q* run_q){
 
+	if(run_q->count ==0)
+		return 1;
+	else
+		return 0;
+
+}
