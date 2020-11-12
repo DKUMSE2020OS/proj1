@@ -11,13 +11,8 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include "msg.h"
-#define t_quantum 5
+#define t_quantum 3
 
-//messge
-int msgq;
-int ret;
-int key = 0x23456;
-struct msgbuf msg;
 
 typedef struct p_PCB{
 	int pid;
@@ -55,18 +50,18 @@ int main()
 {
 	int fd[2];
 	srand(time(NULL));
-	parent_pid = getpid();
 	InitQueue(&run_q);
 	InitQueue(&wait_q);
 
 	for (int i = 0 ; i < 10; i++) {
 		pids[i] = 0;
-		time_quantum[i] = rand()%20+7;
+		time_quantum[i] = rand()%10+7;
 	}
 	// child fork
 	for (int i = 0 ; i < 10; i++) {	
 		pipe(fd);
 		int burst =0;
+		parent_pid = getpid();
 		int ret = fork();
 		if (ret < 0) {
 			// fork fail
@@ -108,13 +103,6 @@ int main()
 	new_sa.sa_handler = &signal_handler;
 	sigaction(SIGALRM, &new_sa, &old_sa);
 
-	// I/O signal handler setup
-	struct sigaction old_sa2;
-	struct sigaction new_sa2;
-	memset(&new_sa, 0, sizeof(new_sa2));
-	new_sa2.sa_handler = &signal_handler3;
-	sigaction(SIGINT, &new_sa2, &old_sa2);
-
 	// fire the alrm timer
 	struct itimerval new_itimer, old_itimer;
 	new_itimer.it_interval.tv_sec = 1;
@@ -127,45 +115,28 @@ int main()
 	return 0;
 }
 
-void signal_handler3(int signo){
-	msgq = msgget(key, IPC_CREAT | 0666);
-	memset(&msg,0,sizeof(msg),0,NULL);
-	ret = msgrcv(msgq, &msg, sizeof(msg),0,NULL);
-
-	struct p_PCB* r_PCB;
-	r_PCB = pop_queue(wait_q);
-	for(int i=0; i<msg.io_time;i++){
-		printf("I/O work, remaining time:  (%d) \n",msg.io_timei-i);}
-	printf("(%d) process's I/O burst finish",msg.pid);
-
-	add_queue(&run_q,r_PCB->pid,r_PCB->burst_time);
-	
-	if (count == total_CPU_burst_time && IsEmpty(&wait_q)){
- 		printf("CPU burst and I/O busrt are all finish, so scheduleing is end\n");
-		exit(0);
-	}
-
-}
 
 void signal_handler2(int signo)
 {
 	printf("(%d) SIGALRM signaled!\n", getpid());
 	count++;
 	if(count%t_quantum==0){
+		int msgq;
+		int ret;
+		int key = 0x23456;
+		struct msgbuf msg;
 		msgq = msgget(key,IPC_CREAT | 0666);
 		memset(&msg, 0, sizeof(msg));
 		msg.mtype =0;
 		msg.pid=getpid();
-		msg.io_time = rand()%10+5;
-		ret = msgsnd(msgq, &msg, sizeof(msg),NULL);
-
-
-		kill(parent_pid, SIGINT);
+		msg.io_time = 3;
+		ret = msgsnd(msgq, &msg, sizeof(msg),IPC_NOWAIT);
 	}
 
 	if(count ==total_exec_time){
 		printf("(%d)  execution completed@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n",getpid());
-		}
+		exit(0);
+	}
 }
 
 void signal_handler(int signo)
@@ -190,9 +161,32 @@ void signal_handler(int signo)
 		r_PCB->time_quantum -= 1;
 	}
 
+	if(!IsEmpty(&wait_q)){
+		int msgq;
+		int ret;
+		int key = 0x23456;
+		struct msgbuf msg;
+		msgq = msgget(key,IPC_CREAT | 0666);
+
+		ret = msgrcv(msgq, &msg, sizeof(msg),0,IPC_NOWAIT);
+
+		struct p_PCB* r_PCB;
+		r_PCB = pop_queue(&wait_q);
+		for(int i=0; i<msg.io_time;i++){
+			printf("I/O work, remaining time:  (%d) \n",msg.io_time-i);}
+		printf("(%d) process's I/O burst finish\n",msg.pid);
+
+		add_queue(&run_q,r_PCB->pid,r_PCB->burst_time);
+	}
+
 	if (count == total_CPU_burst_time){
 		printf("Total CPU work finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");	
-		}
+	}
+	if ((count == total_CPU_burst_time) && (IsEmpty(&wait_q)) && (IsEmpty(&wait_q))){
+		printf("CPU burst and I/O busrt are all finish, so scheduleing is end\n");
+		exit(0);
+	}
+
 }
 
 void add_queue(struct Run_q* run_q,int pid, int burst) {
@@ -204,7 +198,7 @@ void add_queue(struct Run_q* run_q,int pid, int burst) {
 	newNode->state= 0;
 	newNode->remaining_wait= 0;
 	newNode->next = NULL;
-	newNode->time_quantum = 2;
+	newNode->time_quantum = t_quantum-1;
 	if (IsEmpty(run_q)) {
 		run_q->front = run_q->rear = newNode;
 	}
