@@ -39,6 +39,7 @@ typedef struct Run_q {
 void signal_handler(int signo);
 void signal_handler2(int signo);
 void add_queue(struct Run_q* run_q, int pid, int burst, int wait, int when, int state);
+void add_queue_first(struct Run_q* run_q, int pid, int burst, int wait, int when, int state);
 void InitQueue(struct Run_q* run_q);
 int IsEmpty(struct Run_q* run_q);
 struct p_PCB* pop_queue(struct Run_q* run_q);
@@ -132,8 +133,8 @@ int main()
 void signal_handler2(int signo)
 {
 	srand(time(NULL));
-	printf("---handler2 start---\n");
-	printf("  H2: (%d) SIGALRM signaled!\n", getpid());
+//	printf("---handler2 start---\n");
+//	printf("  H2: (%d) SIGALRM signaled!\n", getpid());
 	if (count == 0) {
 
 		//io가 시작되는 타임은 1에서 exec_time-1 사이 random
@@ -143,81 +144,81 @@ void signal_handler2(int signo)
 		int ret2;
 		int key = 0x12345;
 		msgq2 = msgget(key, IPC_CREAT | 0666);
-		printf("SEND: msgq2 id: %d\n", msgq2);
+//		printf("SEND: msgq2 id: %d\n", msgq2);
 
 		struct msgbuf msg2;
 		memset(&msg2, 0, sizeof(msg2));
 		msg2.pid = getpid();
 		msg2.io_when = io_when;
 		ret2 = msgsnd(msgq2, &msg2, sizeof(msg2), 0);
-		printf("msgsnd ret: %d\n", ret2);
+//		printf("msgsnd ret: %d\n", ret2);
 	}
 	//waitq 상태에서
-	if (wait != 0) {
+	if(wait !=0){
 		wait -= 1;
-		printf("  H2: WAITQUE_%d, REMAINING_TIME_%d\n", getpid(), wait);
 	}
 	//runq 상태에서
-	else {
+	else{
 		count++;
 
 		//io작업 전 일반적인 상황
 		if (count < io_when) {
-			printf("  H2: first_exec\n");
+//			printf("  H2: first_exec\n");
 		}
 
 		//io작업이 시작되어야 하는 상황
 		else if (count == io_when) {
 			//wait queue 진입
-			printf("  H2: wait queue\n");
+//			printf("  H2: wait queue\n");
 			wait = rand() % 10 + 1;
 
 			int msgq;
 			int ret;
 			int key = 0x12345;
 			msgq = msgget(key, IPC_CREAT | 0666);
-			printf("SEND: msgq id: %d\n", msgq);
+//			printf("SEND: msgq id: %d\n", msgq);
 
 			struct msgbuf msg;
 			memset(&msg, 0, sizeof(msg));
 			msg.pid = getpid();
 			msg.io_time = wait;
 			ret = msgsnd(msgq, &msg, sizeof(msg), 0);
-			printf("msgsnd ret: %d\n", ret);
+//			printf("msgsnd ret: %d\n", ret);
 		}
 
 		//io작업 후 일반적인 상황
 		else if (count < exec_time) {
-			printf("  H2: second_exec\n");
+//			printf("  H2: second_exec\n");
 		}
 
 		//종료
 		else if (count == exec_time) {
-			printf("  H2: (%d) execution completed@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n", getpid());
-			printf("---handler2 end---\n");
+//			printf("  H2: (%d) execution completed@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n", getpid());
+//			printf("---handler2 end---\n");
+			printf("SIGNAL2(%d) END\n", getpid());
 			exit(0);
 		}
 	}
-	printf("---handler2 end---\n");
+//	printf("---handler2 end---\n");
 }
 
 void signal_handler(int signo)
 {
 	int msgq;
 	int msgq2;
-	printf("---handler1 start---\n");
+//	printf("---handler1 start---\n");
 
 	//waitq가 비어있지 않을 때
 	if (!IsEmpty(&wait_q)) {
 		struct p_PCB* w_PCB = malloc(sizeof(p_PCB));
 		w_PCB = wait_q.front;
 		int target_pid2 = w_PCB->pid;
-		printf("   H1: WAIT(%d): %d\n", target_pid2, w_PCB->remaining_wait);
+		printf("WAIT_Q(%d) remaining_io_time: %d\n", target_pid2, w_PCB->remaining_wait);
 		kill(target_pid2, SIGALRM);
 		w_PCB->remaining_wait -= 1;
 		if (w_PCB->remaining_wait == 0) {
 			w_PCB = pop_queue(&wait_q);
-			add_queue(&run_q, w_PCB->pid, w_PCB->burst_time, w_PCB->remaining_wait, w_PCB->io_timer, 2);
+			add_queue_first(&run_q, w_PCB->pid, w_PCB->burst_time, w_PCB->remaining_wait, w_PCB->io_timer, 2);
 		}
 
 	}
@@ -227,8 +228,7 @@ void signal_handler(int signo)
 		struct p_PCB* r_PCB = malloc(sizeof(p_PCB));
 		r_PCB = run_q.front;
 		int target_pid = r_PCB->pid;
-		printf("   H1: (%d)->(%d) signal! count: %d \n", getpid(), target_pid, count);
-
+//		printf("   H1: (%d)->(%d) signal! count: %d \n", getpid(), target_pid, count);
 		// send child a signal SIGUSR1
 		kill(target_pid, SIGALRM);
 
@@ -240,14 +240,14 @@ void signal_handler(int signo)
 			int ret2;
 			int key = 0x12345;
 			msgq2 = msgget(key, IPC_CREAT | 0666);
-			printf("msgq2 id: %d\n", msgq2);
+//			printf("msgq2 id: %d\n", msgq2);
 
 			struct msgbuf msg2;
 			memset(&msg2, 0, sizeof(msg2));
 			ret2 = msgrcv(msgq2, &msg2, sizeof(msg2), 0, 0);
-			printf("msgsnd ret: %d\n", ret2);
-			printf("msg2.pid: %d\n", msg2.pid);
-			printf("msg2.io_when: %d\n", msg2.io_when);
+//			printf("msgsnd ret: %d\n", ret2);
+//			printf("msg2.pid: %d\n", msg2.pid);
+//			printf("msg2.io_when: %d\n", msg2.io_when);
 			//                        printf("msg.next_exec_time: %d\n", msg.next_exec_time);
 
 			r_PCB->io_timer = msg2.io_when;
@@ -259,47 +259,51 @@ void signal_handler(int signo)
 
 		//프로세스 종료
 		if ((r_PCB->burst_time == 0) & (r_PCB->state == 2)) {
+	                printf("RUN _Q(%d) count: %d, process end\n", target_pid, count);
 			r_PCB = pop_queue(&run_q);
 			free(r_PCB);
 		}
 
 		//io_timer가 0이 된 순간. child로부터 io처리되는데 걸리는 시간에 관련된 메세지를 받고, waitq로 진입한다.
 		else if ((r_PCB->io_timer == 0) & (r_PCB->state == 1)) {
-	
+                       printf("RUN _Q(%d) count: %d, go to i.o\n", target_pid, count);
 			int ret;
 			int key = 0x12345;
 			msgq = msgget(key, IPC_CREAT | 0666);
-			printf("msgq id: %d\n", msgq);
+//			printf("msgq id: %d\n", msgq);
 
 			struct msgbuf msg;
 			memset(&msg, 0, sizeof(msg));
 			ret = msgrcv(msgq, &msg, sizeof(msg), 0, 0);
-			printf("msgsnd ret: %d\n", ret);
-			printf("msg.pid: %d\n", msg.pid);
-			printf("msg.io_time: %d\n", msg.io_time);
+//			printf("msgsnd ret: %d\n", ret);
+//			printf("msg.pid: %d\n", msg.pid);
+//			printf("msg.io_time: %d\n", msg.io_time);
 			r_PCB = pop_queue(&run_q);
 			add_queue(&wait_q, r_PCB->pid, r_PCB->burst_time, msg.io_time, r_PCB->io_timer, r_PCB->state);
 		}
 
 		//tq끝나서 맨 뒤로 돌아감
 		else if (r_PCB->time_quantum == 0) {
+                        printf("RUN _Q(%d) count: %d, tq: 0. go to end\n", target_pid, count);
 			r_PCB = pop_queue(&run_q);
 			add_queue(&run_q, r_PCB->pid, r_PCB->burst_time, 0, r_PCB->io_timer, r_PCB->state);
 		}
 
 		//아무 상황도 아닌 평범한 상황
 		else {
+                        printf("RUN _Q(%d) count: %d, tq: %d.\n", target_pid, count, r_PCB->time_quantum);
 			r_PCB->time_quantum -= 1;
 		}
 	}
 
 	if ((count == total_CPU_burst_time) && (IsEmpty(&run_q)) && (IsEmpty(&wait_q))) {
-		printf("******************************REALLY BYE**************************\n");
+//		printf("******************************REALLY BYE**************************\n");
+		printf("FINISHED\n");
 		msgctl(msgq, IPC_RMID, 0);
 		msgctl(msgq2, IPC_RMID, 0);
 		exit(0);
 	}
-	printf("---handler1 end---\n");
+//	printf("---handler1 end---\n");
 }
 
 void add_queue(struct Run_q* run_q, int pid, int burst, int wait, int when, int state) {
@@ -324,6 +328,27 @@ void add_queue(struct Run_q* run_q, int pid, int burst, int wait, int when, int 
 	run_q->count++;
 }
 
+void add_queue_first(struct Run_q* run_q, int pid, int burst, int wait, int when, int state) {
+
+        struct p_PCB* newNode = malloc(sizeof(p_PCB));
+
+        newNode->pid = pid;
+        newNode->burst_time = burst;
+        newNode->remaining_wait = wait;
+        newNode->next = NULL;
+        newNode->time_quantum = 2;
+        newNode->state = state;
+        newNode->io_timer = when;
+        if (IsEmpty(run_q)) {
+                run_q->front = run_q->rear = newNode;
+        }
+        else {
+                newNode->next = run_q->front;
+                run_q->front = newNode;
+        }
+
+        run_q->count++;
+}
 struct p_PCB* pop_queue(struct Run_q* run_q) {
 
 	struct p_PCB* newNode = malloc(sizeof(p_PCB));
