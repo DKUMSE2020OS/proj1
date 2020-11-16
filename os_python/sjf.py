@@ -22,6 +22,7 @@ class PCB:
 
     cpu_burst =0
     io_burst =0
+    wait_time =0
 
 
 def play():
@@ -87,6 +88,7 @@ def parent():
     tr =0
     if end.value == 0 and ready_q[0].c_turn == 0:
         ready_q[0].c_turn = 1
+        ready_q[0].wait_time =0
         shared_cpu_burst.value = ready_q[0].cpu_burst
         shared_c_turn.value = ready_q[0].c_turn
         os.kill(ready_q[0].pid,signal.SIGUSR1)
@@ -103,6 +105,9 @@ def parent():
             tr =0
         end.value =0
     
+    for x in range(1,len(ready_q)):
+        ready_q[x].wait_time+=1
+    
     total_time.value+=1
 
 
@@ -116,7 +121,7 @@ def ready_init(pid):
 def display():
     print('******************ready_q****************************')
     for x in range(len(ready_q)):
-        print('id : ',ready_q[x].pid,'cpu :',ready_q[x].cpu_burst ,'io : ',ready_q[x].io_burst)
+        print('id : ',ready_q[x].pid,'cpu :',ready_q[x].cpu_burst ,'io : ',ready_q[x].io_burst,'wait_time :',ready_q[x].wait_time)
     print('******************wait_q****************************')
     if wait_q != []:
         for x in range(len(wait_q)):

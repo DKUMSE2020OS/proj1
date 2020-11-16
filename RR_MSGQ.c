@@ -7,7 +7,6 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include "msg.h"
 #include <time.h>
 
 #define key 0x12345
@@ -25,6 +24,13 @@ int ready_count=0;
 int wait_count=0;
 int turn=0;
 int time_q;
+
+struct msgbuf {
+	int mtype;
+	int pid;
+	int io_time;
+	int message;
+};
 
 typedef struct pcb{
     struct pcb* next;

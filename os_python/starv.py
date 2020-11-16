@@ -22,7 +22,8 @@ class PCB:
 
     cpu_burst =0
     io_burst =0
-    wait_time =0
+    wait_time = 0
+
 
 def play():
     if total_time.value == 100:
@@ -54,7 +55,13 @@ def arrange(a,b):
     if ready_q[0].cpu_burst == 0:
         tmp = ready_q.pop(0)
         wait_q.append(tmp)
-            
+        min_ind = 0
+        for x in range(1,len(ready_q)):
+            if ready_q[min_ind].cpu_burst > ready_q[x].cpu_burst:
+                min_ind = x
+        tmp = ready_q.pop(min_ind)
+        ready_q.insert(0,tmp)
+          
 
     if wait_q!=[]:
         if wait_q[0].io_burst ==0 :
@@ -62,9 +69,21 @@ def arrange(a,b):
             tmp.cpu_burst = random.randint(8,15)
             tmp.io_burst = random.randint(3,15)
             ready_q.append(tmp)
+            if len(wait_q)>=2:
+                min_ind = 0
+                for x in range(0,len(wait_q)):
+                    if wait_q[min_ind].cpu_burst > wait_q[x].cpu_burst:
+                        min_ind = x
+                tmp = wait_q.pop(min_ind)
+                wait_q.insert(0,tmp)
 
-    for x in range(1,len(ready_q)):
-        ready_q[x].wait_time+=1
+    ma = 0
+    for x in range(len(ready_q)):
+        if ready_q[x].wait_time >=30:
+            if ready_q[ma].wait_time<ready_q[x].wait_time:
+                ma = x
+    tmp = ready_q.pop(ma)
+    ready_q.insert(0,tmp)
 
     end.value = 1
 
@@ -91,6 +110,9 @@ def parent():
         while end.value == 0:
             tr =0
         end.value =0
+    
+    for x in range(1,len(ready_q)):
+        ready_q[x].wait_time+=1
     
     total_time.value+=1
 
