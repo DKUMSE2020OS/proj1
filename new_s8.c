@@ -125,11 +125,12 @@ int main()
 			pids[i] = ret;
 			add_queue(&run_q, pids[i], burst, 0, timing, 0);
 			fprintf(fp,"child %d created, exec %d, timing %d\n", pids[i], burst, timing);
+			fflush(fp);
 		}
 	}
 
 	fprintf(fp,"total cpu burst time is %d\n", total_CPU_burst_time);
-
+	fflush(fp);
 	// signal handler setup
 	struct sigaction old_sa;
 	struct sigaction new_sa;
@@ -172,6 +173,7 @@ void signal_handler2(int signo)
 //		printf("SIGNAL2(%d) END\n", getpid());
 		exit(0);
 	}
+	fflush(fp);
 }
 
 void signal_handler(int signo)
@@ -241,6 +243,7 @@ void signal_handler(int signo)
 		fclose(fp);
 		exit(0);
 	}
+	fflush(fp);
 }
 
 void add_queue(struct Run_q* run_q, int pid, int burst, int wait, int when, int state) {
