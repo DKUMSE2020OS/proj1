@@ -9,7 +9,7 @@
 #include <sys/msg.h>
 #include <sys/ipc.h>
 #include <sys/types.h>
-#define t_quantum 2
+#define t_quantum 30
 
 struct msgbuf {
 	int pid;
@@ -269,7 +269,7 @@ void add_queue_first(struct Run_q* run_q, int pid, int burst, int wait, int when
 	newNode->burst_time = burst;
 	newNode->remaining_wait = wait;
 	newNode->next = NULL;
-	newNode->time_quantum = 2;
+	newNode->time_quantum = t_quantum;
 	newNode->state = state;
 	newNode->io_timer = when;
 	if (IsEmpty(run_q)) {
